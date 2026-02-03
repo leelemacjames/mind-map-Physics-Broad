@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Force Fields & Bosons Mind Map</title>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: #121318;
+      --text: #e8e8ea;
+      --muted: #a9a9b3;
+      --line: rgba(255,255,255,0.25);
+      --shadow: 0 10px 25px rgba(0,0,0,0.35);
+      --radius: 18px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(1000px 700px at 50% 40%, #1a1d2e, var(--bg));
+      color: var(--text);
+      font-family: var(--font);
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      position: absolute;
+      top: 12px; left: 12px; right: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .hud {
+      pointer-events: auto;
+      background: rgba(18,19,24,0.78);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .hud input {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      padding: 8px 10px;
+      width: 260px;
+      outline: none;
+    }
+    .hud button {
+      background: rgba(255,255,255,0.10);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .hud button:hover { background: rgba(255,255,255,0.16); }
+    .hint { color: var(--muted); font-size: 12px; pointer-events: auto; }
+
+    /* SVG + nodes */
+    #stage {
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+    #stage:active { cursor: grabbing; }
+
+    .edge {
+      stroke: var(--line);
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+
+    .node {
+      filter: drop-shadow(0 10px 15px rgba(0,0,0,0.35));
+      transition: opacity 0.3s ease;
+    }
+    .pill {
+      rx: 999;
+      ry: 999;
+      stroke: rgba(255,255,255,0.18);
+      stroke-width: 1;
+      transition: stroke-width 0.2s ease, stroke 0.2s ease;
+    }
+    .label {
+      font-size: 14px;
+      font-weight: 650;
+      fill: #101114;
+      pointer-events: none;
+      user-select: none;
+    }
+    .label.small {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .label.title {
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    /* Clickable overlay (in SVG we use pointer events on group) */
+    .clickable { cursor: pointer; }
+    .clickable:hover .pill { stroke: rgba(255,255,255,0.6); stroke-width: 2; }
+    .clickable:hover { filter: drop-shadow(0 14px 22px rgba(0,0,0,0.45)); }
+
+    .tag {
+      font-size: 11px;
+      fill: rgba(232,232,234,0.6);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      z-index: 10;
+      background: rgba(18,19,24,0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      max-width: 320px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+      font-size: 13px;
+      color: var(--text);
+      display: none;
+      pointer-events: none;
+      transform: translate(10px, 10px);
+    }
+    .tooltip .t { font-weight: 700; margin-bottom: 6px; color: #fff; }
+    .tooltip .d { color: var(--muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hud">
+      <input id="search" placeholder="Search nodes (e.g., Bosons, Gravity, Light)..." />
+      <button id="reset">Reset view</button>
+    </div>
+    <div class="hint">
+      Drag to pan • Mousewheel to zoom • Click nodes to visit pages
+    </div>
+  </header>
+
+  <div id="tip" class="tooltip" aria-hidden="true"></div>
+
+  <svg id="stage" viewBox="0 0 1400 900" role="img" aria-label="Mind map">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,0.25)"></path>
+      </marker>
+    </defs>
+
+    <!-- PANNABLE+ZOOMABLE GROUP -->
+    <g id="world">
+      <!-- Edges -->
+      <!-- Center connections -->
+      <path class="edge" id="e-center-mech" />
+      <path class="edge" id="e-center-astro" />
+      <path class="edge" id="e-center-em" />
+      <path class="edge" id="e-center-part" />
+      <path class="edge" id="e-center-heat" />
+
+      <!-- Sub-connections -->
+      <path class="edge" id="e-em-optics" />
+      <path class="edge" id="e-part-decay" />
+      <path class="edge" id="e-part-bosons" />
+      <path class="edge" id="e-part-matter" />
+      <path class="edge" id="e-astro-mech" /> <!-- Linking Gravity to Inertial -->
+
+      <!-- Nodes -->
+      
+      <!-- CENTER: Heavens & Earth Unified -->
+      <g class="node clickable" data-id="center"
+         data-title="Heavens & Earth Unified"
+         data-desc="The unification of celestial mechanics and terrestrial physics. Nature answers to Maths."
+      >
+        <rect class="pill" x="610" y="410" width="180" height="80" fill="#cfd2dc" />
+        <text class="label title" x="700" y="445" text-anchor="middle">Heavens & Earth</text>
+        <text class="label title" x="700" y="468" text-anchor="middle">Unified</text>
+      </g>
+
+      <!-- TOP RIGHT: Astronomy / Gravity -->
+      <g class="node clickable" data-id="astro"
+         data-title="Astronomy (Gravity)"
+         data-desc="Central inverse square law of Gravity. All matter has mass with weight near a planet."
+         data-href="https://astronomy-questions.vercel.app/"
+      >
+        <rect class="pill" x="850" y="250" width="180" height="70" fill="#aee7f0" />
+        <text class="label" x="940" y="290" text-anchor="middle">Astronomy & Gravity</text>
+      </g>
+
+      <!-- TOP LEFT: Mechanics of Motion -->
+      <g class="node clickable" data-id="mech"
+         data-title="Mechanics of Motion"
+         data-desc="Free fall in a g-field is the same as inertial acceleration. g-field is conservative."
+         data-href="https://galilean-relativity.vercel.app/"
+      >
+        <rect class="pill" x="370" y="250" width="180" height="70" fill="#c8eff7" />
+        <text class="label" x="460" y="290" text-anchor="middle">Mechanics of Motion</text>
+      </g>
+
+      <!-- BOTTOM LEFT: Electromagnetism -->
+      <g class="node clickable" data-id="em"
+         data-title="Electromagnetism"
+         data-desc="Electricity and Magnetism unified. Accelerating electrons emit waves. Charge is conserved."
+         data-href="https://leelemacjames.github.io/electromagneticInduction/"
+      >
+        <rect class="pill" x="350" y="580" width="200" height="70" fill="#bde7b0" />
+        <text class="label" x="450" y="620" text-anchor="middle">Electromagnetism</text>
+      </g>
+
+      <!-- Sub: Optics -->
+      <g class="node clickable" data-id="optics"
+         data-title="Wave Theory & Optics"
+         data-desc="Light is Interlacing E and B Fields. Electromagnetic waves."
+      >
+        <rect class="pill" x="150" y="680" width="180" height="60" fill="#d6f4cf" />
+        <text class="label small" x="240" y="715" text-anchor="middle">Wave Theory / Optics</text>
+      </g>
+
+      <!-- BOTTOM RIGHT: Particle Physics -->
+      <g class="node clickable" data-id="part"
+         data-title="Particle Zoo"
+         data-desc="Elementary Particles. All matter is made of Baryons. Matter appears solid but contact is electrostatic."
+         data-href="https://leelemacjames.github.io/orbitalBohr/"
+      >
+        <rect class="pill" x="850" y="580" width="200" height="70" fill="#f1d27a" />
+        <text class="label" x="950" y="620" text-anchor="middle">Particle Zoo</text>
+      </g>
+
+      <!-- Sub: Decay -->
+      <g class="node clickable" data-id="decay"
+         data-title="Radioactivity & Decay"
+         data-desc="Atomic theory, Decay, Radiation. Unstable nuclei transform."
+         data-href="https://nuclear-decay-survival-time.vercel.app/"
+      >
+        <rect class="pill" x="1100" y="520" width="180" height="60" fill="#ffe5a9" />
+        <text class="label small" x="1190" y="555" text-anchor="middle">Radioactivity & Decay</text>
+      </g>
+
+      <!-- Sub: Bosons -->
+      <g class="node clickable" data-id="bosons"
+         data-title="Exchange Bosons"
+         data-desc="Mediators of Interaction. Forces are transmitted by exchange particles."
+      >
+        <rect class="pill" x="1120" y="620" width="160" height="60" fill="#ffe5a9" />
+        <text class="label small" x="1200" y="655" text-anchor="middle">Exchange Bosons</text>
+      </g>
+      
+      <!-- Sub: Matter Properties -->
+      <g class="node clickable" data-id="matter"
+         data-title="Nature of Matter"
+         data-desc="Matter appears solid but is mostly vacuum. Contact forces are electrostatic."
+         data-href="https://nuclear-radii-bohr-model.vercel.app/"
+      >
+         <rect class="pill" x="1080" y="720" width="200" height="60" fill="#ffe5a9" />
+         <text class="label small" x="1180" y="755" text-anchor="middle">Nature of Matter</text>
+      </g>
+
+      <!-- BOTTOM CENTER: Heat -->
+      <g class="node clickable" data-id="heat"
+         data-title="Heat & Thermodynamics"
+         data-desc="Hot matter moves fast. Evaporation. Hot matter lights up."
+         data-href="https://thermodynamics-entropy-questions.vercel.app/"
+      >
+        <rect class="pill" x="650" y="750" width="100" height="60" fill="#f1a6b3" />
+        <text class="label" x="700" y="785" text-anchor="middle">Heat</text>
+      </g>
+
+      <!-- Annotations -->
+      <text class="tag" x="700" y="380" text-anchor="middle">Inverse Square Laws</text>
+      <text class="tag" x="500" y="500" text-anchor="middle">Fields</text>
+      <text class="tag" x="900" y="500" text-anchor="middle">Matter</text>
+    </g>
+  </svg>
+
+  <script>
+    { // Block scope to prevent global variable collisions
+      
+      // ---------- Node layout data (for drawing edges) ----------
+      const createPoint = (x,y) => ({x,y});
+
+      const centers = {
+        center: createPoint(700, 450),
+        
+        // Clusters
+        mech: createPoint(460, 285),
+        astro: createPoint(940, 285),
+        em: createPoint(450, 615),
+        part: createPoint(950, 615),
+        heat: createPoint(700, 780),
+
+        // Satellites
+        optics: createPoint(240, 710),
+        decay: createPoint(1190, 550),
+        bosons: createPoint(1200, 650),
+        matter: createPoint(1180, 750)
+      };
+
+      function setEdge(edgeId, fromId, toId) {
+        const e = document.getElementById(edgeId);
+        const a = centers[fromId], b = centers[toId];
+        if (!e || !a || !b) return;
+        e.setAttribute("d", `M ${a.x} ${a.y} L ${b.x} ${b.y}`);
+      }
+
+      // Connect Center to main clusters
+      setEdge("e-center-mech", "center", "mech");
+      setEdge("e-center-astro", "center", "astro");
+      setEdge("e-center-em", "center", "em");
+      setEdge("e-center-part", "center", "part");
+      setEdge("e-center-heat", "center", "heat");
+
+      // Connect sub-nodes
+      setEdge("e-em-optics", "em", "optics");
+      setEdge("e-part-decay", "part", "decay");
+      setEdge("e-part-bosons", "part", "bosons");
+      setEdge("e-part-matter", "part", "matter");
+      
+      // Cross connections (Conceptual)
+      // Connecting Gravity/Astronomy to Mechanics (Free Fall connection)
+      setEdge("e-astro-mech", "astro", "mech");
+
+
+      // ---------- Tooltip / Interaction Logic ----------
+      const tip = document.getElementById("tip");
+
+      function showTip(evt, title, desc) {
+        tip.style.display = "block";
+        tip.innerHTML = `<div class="t">${title}</div><div class="d">${desc}</div>`;
+        moveTip(evt);
+      }
+      
+      function moveTip(evt) {
+        const pad = 14;
+        // Keep tooltip within screen bounds roughly
+        let x = evt.clientX + pad;
+        let y = evt.clientY + pad;
+        
+        if (x + 320 > window.innerWidth) x = evt.clientX - 330;
+        if (y + 100 > window.innerHeight) y = evt.clientY - 110;
+        
+        tip.style.left = x + "px";
+        tip.style.top = y + "px";
+      }
+      
+      function hideTip() { tip.style.display = "none"; }
+
+      document.querySelectorAll(".node.clickable").forEach(g => {
+        // Hover effects
+        g.addEventListener("mousemove", (evt) => {
+          showTip(evt, g.dataset.title || "", g.dataset.desc || "");
+        });
+        g.addEventListener("mouseleave", hideTip);
+        
+        // Click effect
+        g.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // Check for link
+          const href = g.dataset.href;
+          if (href) {
+            window.open(href, '_blank');
+          }
+        });
+      });
+
+      // ---------- Pan + Zoom ----------
+      const svg = document.getElementById("stage");
+      const world = document.getElementById("world");
+      let isPanning = false;
+      let start = {x:0, y:0};
+      let pan = {x:0, y:0};
+      let scale = 1;
+
+      function applyTransform() {
+        world.setAttribute("transform", `translate(${pan.x} ${pan.y}) scale(${scale})`);
+      }
+
+      svg.addEventListener("mousedown", (e) => {
+        if (e.target.closest && e.target.closest(".clickable")) return;
+        isPanning = true;
+        start = {x: e.clientX - pan.x, y: e.clientY - pan.y};
+        svg.style.cursor = "grabbing";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (isPanning) {
+          pan.x = e.clientX - start.x;
+          pan.y = e.clientY - start.y;
+          applyTransform();
+        }
+      });
+
+      window.addEventListener("mouseup", () => { 
+        isPanning = false; 
+        svg.style.cursor = "grab";
+      });
+
+      // Zoom
+      svg.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = -Math.sign(e.deltaY) * 0.1;
+        const next = Math.min(3, Math.max(0.4, scale * (1 + delta)));
+
+        // Zoom towards mouse
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        const ctm = world.getScreenCTM().inverse();
+        const mouseBefore = pt.matrixTransform(ctm);
+
+        scale = next;
+        applyTransform();
+
+        const ctm2 = world.getScreenCTM().inverse();
+        const mouseAfter = pt.matrixTransform(ctm2);
+
+        pan.x += (mouseAfter.x - mouseBefore.x) * scale;
+        pan.y += (mouseAfter.y - mouseBefore.y) * scale;
+        applyTransform();
+      }, { passive: false });
+
+
+      // ---------- Search ----------
+      const search = document.getElementById("search");
+      const resetBtn = document.getElementById("reset");
+
+      function clearHighlights() {
+        document.querySelectorAll(".node .pill").forEach(r => r.style.strokeWidth = "1");
+        document.querySelectorAll(".node").forEach(g => g.style.opacity = "1");
+      }
+
+      function highlight(query) {
+        const q = query.trim().toLowerCase();
+        if (!q) { clearHighlights(); return; }
+
+        document.querySelectorAll(".node").forEach(g => {
+          const title = (g.dataset.title || "").toLowerCase();
+          const desc = (g.dataset.desc || "").toLowerCase();
+          const match = title.includes(q) || desc.includes(q);
+          
+          g.style.opacity = match ? "1" : "0.1";
+          const pill = g.querySelector(".pill");
+          if (pill) pill.style.strokeWidth = match ? "3" : "1";
+        });
+      }
+
+      search.addEventListener("input", () => highlight(search.value));
+
+      resetBtn.addEventListener("click", () => {
+        pan = {x:0, y:0};
+        scale = 1;
+        applyTransform();
+        search.value = "";
+        clearHighlights();
+      });
+
+      // Initial center
+      applyTransform();
+    }
+  </script>
+</body>
+</html>
